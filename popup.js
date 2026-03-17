@@ -126,7 +126,17 @@ browser.runtime.onMessage.addListener((message, sender) => {
 (async () => {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   
-  if (!tab.url || !tab.url.includes('photos.google.com')) {
+  let isGooglePhotos = false;
+  if (tab && typeof tab.url === 'string') {
+    try {
+      const urlObj = new URL(tab.url);
+      isGooglePhotos = (urlObj.hostname === 'photos.google.com');
+    } catch (e) {
+      isGooglePhotos = false;
+    }
+  }
+
+  if (!isGooglePhotos) {
     document.getElementById('status').textContent = 'Please open photos.google.com first';
     document.getElementById('status').style.color = COLORS.ERROR;
     document.getElementById('startBtn').disabled = true;

@@ -5,22 +5,10 @@ A Firefox extension to automate bulk deletion of photos from Google Photos.
 ## WARNING
 **This extension will DELETE ALL your photos from Google Photos.** This action cannot be easily undone. Back up your photos with [Google Takeout](https://takeout.google.com/) first if you want to keep them.
 
-## Installation
-
-### Option 1: Install XPI File (Recommended)
-
-1. Build the XPI file:
-   - **Windows:** Run `.\build-xpi.ps1`
-   - **Linux/Mac:** Run `./build-xpi.sh`
-2. Open Firefox and go to `about:addons`
-3. Click the gear icon -> "Install Add-on From File..."
-4. Select the generated `google-photos-deleter-1.0.xpi` file
-5. Accept the installation prompt
-
-### Option 2: Temporary Loading (Development)
+### Temporary Loading (Development)
 
 1. Open Firefox and navigate to `about:debugging`
-2. Click "This Firefox" → "Load Temporary Add-on"
+2. Click "This Firefox" -> "Load Temporary Add-on"
 3. Select the `manifest.json` file from this repository
 4. The extension will be loaded until Firefox restarts
 
@@ -80,7 +68,7 @@ chmod +x build-xpi.sh
 ## Configuration
 
 Default settings can be adjusted in the code:
-- Batch size: 100 photos (in `popup.js`)
+- Batch size: up to 100 photos (in `popup.js`)
 - Delay between batches: 300ms (in `popup.js`)
 - Safety iteration limit: 10,000 (in `content.js`)
 

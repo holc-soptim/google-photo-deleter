@@ -1,11 +1,14 @@
+const DEFAULT_BATCH_SIZE = 100;
+const DEFAULT_DELAY_MS = 300;
+
 let isRunning = false;
 
 document.getElementById('startBtn').addEventListener('click', async () => {
-  // Optimized settings for speed
-  const batchSize = 100;  // Large batch for speed
-  const delay = 300;      // Fast but safe delay
   
-  // Check if on correct page
+  const batchSize = DEFAULT_BATCH_SIZE;
+  const delay = DEFAULT_DELAY_MS;
+  
+  
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   
   if (!tab.url || !tab.url.includes('photos.google.com')) {
@@ -25,7 +28,6 @@ document.getElementById('startBtn').addEventListener('click', async () => {
   
   isRunning = true;
 
-  // Send message to content script to start deletion
   try {
     await browser.tabs.sendMessage(tab.id, {
       action: 'startDeletion',
@@ -59,7 +61,6 @@ document.getElementById('stopBtn').addEventListener('click', async () => {
   isRunning = false;
 });
 
-// Listen for status updates from content script
 browser.runtime.onMessage.addListener((message) => {
   if (message.type === 'status') {
     document.getElementById('status').textContent = message.status;
@@ -87,7 +88,6 @@ browser.runtime.onMessage.addListener((message) => {
   }
 });
 
-// Check page on load
 (async () => {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   

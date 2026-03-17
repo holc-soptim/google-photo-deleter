@@ -1,7 +1,34 @@
+const MAX_ITERATIONS = 10000;
+const RECHECK_WAIT_MS = 2000;
+const MIN_SELECTION_RATIO = 0.25;
+const MIN_PHOTOS_TO_SELECT = 10;
+const WAIT_AFTER_SELECTION_MS = 1000;
+const WAIT_BEFORE_CONFIRM_MS = 1500;
+const PAGE_UPDATE_CHECK_INTERVAL_MS = 500;
+const MAX_PAGE_UPDATE_ATTEMPTS = 15;
+const SCROLL_TRIGGER_ATTEMPT = 10;
+const SCROLL_AMOUNT = 500;
+const MIN_PHOTO_SIZE = 50;
+const MAX_PHOTO_SIZE = 500;
+const MAX_PHOTOS_PER_BATCH = 200;
+const SELECTION_WAIT_MS = 50;
+const SELECTION_PROGRESS_DELTA = 20;
+const MIN_BATCH_DELAY_MS = 500;
+const DELETE_KEY_CODE = 46;
+const ENTER_KEY_CODE = 13;
+
+const PROGRESS_BATCH_START = 0;
+const PROGRESS_SELECTING_START = 10;
+const PROGRESS_SELECTING_END = 30;
+const PROGRESS_DELETE_CLICK = 50;
+const PROGRESS_CONFIRMING = 70;
+const PROGRESS_MOVED_TO_BIN = 90;
+const PROGRESS_WAITING_REFRESH = 95;
+const PROGRESS_BATCH_COMPLETE = 100;
+
 let isDeleting = false;
 let totalDeleted = 0;
 
-// Listen for messages from popup
 browser.runtime.onMessage.addListener((message) => {
   if (message.action === 'startDeletion') {
     isDeleting = true;
@@ -43,24 +70,21 @@ async function startDeletionProcess(batchSize, delay) {
   console.log(`Batch size: ${batchSize}, Delay: ${delay}ms`);
   
   let iterationCount = 0;
-  const maxIterations = 10000; // Safety limit
   
-  while (isDeleting && iterationCount < maxIterations) {
+  while (isDeleting && iterationCount < MAX_ITERATIONS) {
     iterationCount++;
     
     sendStatus(`Processing batch ${iterationCount}...`);
-    sendBatchProgress('Starting batch...', 0);
+    sendBatchProgress('Starting batch...', PROGRESS_BATCH_START);
     console.log(`--- Batch ${iterationCount} ---`);
     
-    // Find all photo items
     const photoItems = findPhotoElements();
     
     console.log(`Found ${photoItems.length} photos on page`);
     
     if (photoItems.length === 0) {
-      // Wait a bit and check again - might be loading
-      console.log('No photos found, waiting 2 seconds and checking again...');
-      await wait(2000);
+      console.log(`No photos found, waiting ${RECHECK_WAIT_MS}ms and checking again...`);
+      await wait(RECHECK_WAIT_MS);
       const recheckPhotos = findPhotoElements();
       
       if (recheckPhotos.length === 0) {
@@ -70,20 +94,17 @@ async function startDeletionProcess(batchSize, delay) {
         break;
       } else {
         console.log(`Found ${recheckPhotos.length} photos on recheck, continuing...`);
-        // Continue with the rechecked photos
         continue;
       }
     }
     
     sendProgress(`Found ${photoItems.length} photos on page. Total deleted so far: ${totalDeleted}`);
     
-    // Store the first photo's ID or data attribute to check if page updates
     const firstPhotoId = photoItems[0].getAttribute('data-item-id') || 
                         photoItems[0].getAttribute('data-latest-creation-time') ||
                         photoItems[0].innerHTML.substring(0, 100);
     
-    // Select photos - with progress updates
-    sendBatchProgress('Selecting photos...', 10);
+    sendBatchProgress('Selecting photos...', PROGRESS_SELECTING_START);
     const selectedCount = await selectPhotos(photoItems, batchSize);
     
     console.log(`Selection completed: ${selectedCount} photos selected (requested: ${batchSize})`);
@@ -95,17 +116,15 @@ async function startDeletionProcess(batchSize, delay) {
       continue;
     }
     
-    // If we selected very few photos (less than 25% of batch), something might be wrong
-    if (selectedCount < batchSize * 0.25 && selectedCount < 10) {
+    if (selectedCount < batchSize * MIN_SELECTION_RATIO && selectedCount < MIN_PHOTOS_TO_SELECT) {
       console.log(`Warning: Only selected ${selectedCount} out of ${batchSize} requested. Might be an issue, but continuing...`);
     }
     
     sendStatus(`Selected ${selectedCount} photos. Deleting...`);
-    sendBatchProgress(`Selected ${selectedCount} photos`, 30);
-    await wait(1000);
+    sendBatchProgress(`Selected ${selectedCount} photos`, PROGRESS_SELECTING_END);
+    await wait(WAIT_AFTER_SELECTION_MS);
     
-    // Click delete button
-    sendBatchProgress('Clicking delete button...', 50);
+    sendBatchProgress('Clicking delete button...', PROGRESS_DELETE_CLICK);
     const deleteSuccess = await clickDeleteButton();
     
     if (!deleteSuccess) {
@@ -116,10 +135,9 @@ async function startDeletionProcess(batchSize, delay) {
       continue;
     }
     
-    sendBatchProgress('Confirming deletion...', 70);
-    await wait(1500); // Wait for dialog
+    sendBatchProgress('Confirming deletion...', PROGRESS_CONFIRMING);
+    await wait(WAIT_BEFORE_CONFIRM_MS);
     
-    // Confirm deletion
     const confirmSuccess = await confirmDeletion();
     
     if (!confirmSuccess) {
@@ -129,30 +147,26 @@ async function startDeletionProcess(batchSize, delay) {
       continue;
     }
     
-    sendBatchProgress('Photos moved to bin!', 90);
+    sendBatchProgress('Photos moved to bin!', PROGRESS_MOVED_TO_BIN);
     totalDeleted += selectedCount;
     console.log(`Batch deleted! Total so far: ${totalDeleted}`);
     sendProgress(`Batch deleted! Total: ${totalDeleted} photos`);
     
-    // Wait for the page to update after deletion
     console.log('Waiting for page to update...');
     sendStatus('Waiting for page to refresh...');
-    sendBatchProgress('Waiting for page refresh...', 95);
+    sendBatchProgress('Waiting for page refresh...', PROGRESS_WAITING_REFRESH);
     
-    // Wait and check if photos changed
     let pageUpdated = false;
     let attempts = 0;
-    const maxAttempts = 15; // 7.5 seconds total
     
-    while (attempts < maxAttempts && !pageUpdated) {
-      await wait(500);
+    while (attempts < MAX_PAGE_UPDATE_ATTEMPTS && !pageUpdated) {
+      await wait(PAGE_UPDATE_CHECK_INTERVAL_MS);
       attempts++;
       
       const newPhotoItems = findPhotoElements();
       
-      console.log(`Check ${attempts}/${maxAttempts}: Found ${newPhotoItems.length} photos (was ${photoItems.length})`);
+      console.log(`Check ${attempts}/${MAX_PAGE_UPDATE_ATTEMPTS}: Found ${newPhotoItems.length} photos (was ${photoItems.length})`);
       
-      // Check if number of photos decreased
       if (newPhotoItems.length < photoItems.length - (selectedCount / 2)) {
         console.log(`✓ Photo count decreased from ${photoItems.length} to ${newPhotoItems.length}. Continuing...`);
         pageUpdated = true;
@@ -165,7 +179,6 @@ async function startDeletionProcess(batchSize, delay) {
         break;
       }
       
-      // Check if first photo changed
       if (newPhotoItems.length > 0) {
         const newFirstPhotoId = newPhotoItems[0].getAttribute('data-item-id') || 
                                newPhotoItems[0].getAttribute('data-latest-creation-time') ||
@@ -178,27 +191,25 @@ async function startDeletionProcess(batchSize, delay) {
         }
       }
       
-      // If we're at 5 seconds and nothing changed, try scrolling
-      if (attempts === 10) {
+      if (attempts === SCROLL_TRIGGER_ATTEMPT) {
         console.log('Trying to scroll to trigger page update...');
-        window.scrollBy(0, 500);
-        await wait(100);
-        window.scrollBy(0, -500);
+        window.scrollBy(0, SCROLL_AMOUNT);
+        await wait(SELECTION_WAIT_MS * 2);
+        window.scrollBy(0, -SCROLL_AMOUNT);
       }
     }
     
     if (!pageUpdated) {
-      console.log(`Page did not update after ${maxAttempts * 0.5} seconds. Continuing anyway...`);
+      console.log(`Page did not update after ${MAX_PAGE_UPDATE_ATTEMPTS * PAGE_UPDATE_CHECK_INTERVAL_MS / 1000} seconds. Continuing anyway...`);
       sendStatus('No page update detected, continuing...');
     }
     
-    sendBatchProgress('Batch complete!', 100);
+    sendBatchProgress('Batch complete!', PROGRESS_BATCH_COMPLETE);
     
-    // Additional delay between batches
-    await wait(Math.max(delay, 500));
+    await wait(Math.max(delay, MIN_BATCH_DELAY_MS));
   }
   
-  if (iterationCount >= maxIterations) {
+  if (iterationCount >= MAX_ITERATIONS) {
     console.log('Reached safety limit');
     sendComplete(`Stopped at safety limit. Deleted ${totalDeleted} photos.`);
   }
@@ -207,7 +218,6 @@ async function startDeletionProcess(batchSize, delay) {
 function findPhotoElements() {
   console.log('Searching for photo elements...');
   
-  // Try multiple selectors for photo elements
   const selectors = [
     'div[data-latest-creation-time]',
     'div[data-item-id]',
@@ -219,15 +229,13 @@ function findPhotoElements() {
     const elements = document.querySelectorAll(selector);
     if (elements.length > 0) {
       console.log(`Found ${elements.length} photos using selector: ${selector}`);
-      // Filter to only visible elements that are actual photo thumbnails
       const filtered = Array.from(elements).filter(el => {
         const rect = el.getBoundingClientRect();
-        // Must be visible and reasonably sized (thumbnails, not full-screen views)
-        return rect.width > 50 && rect.height > 50 && rect.width < 500 && rect.height < 500;
+        return rect.width > MIN_PHOTO_SIZE && rect.height > MIN_PHOTO_SIZE && rect.width < MAX_PHOTO_SIZE && rect.height < MAX_PHOTO_SIZE;
       });
       console.log(`Filtered to ${filtered.length} visible photo thumbnails`);
       if (filtered.length > 0) {
-        return filtered.slice(0, 200); // Limit to first 200
+        return filtered.slice(0, MAX_PHOTOS_PER_BATCH);
       }
     }
   }
@@ -243,36 +251,29 @@ async function selectPhotos(photoItems, batchSize) {
   
   const targetCount = Math.min(photoItems.length, batchSize);
   
-  // Try each photo up to batchSize
   for (let i = 0; i < targetCount; i++) {
     const item = photoItems[i];
     
     try {
-      // Scroll item into view
       item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      await wait(50);
+      await wait(SELECTION_WAIT_MS);
       
-      // Simulate hover to make checkbox appear
       const mouseoverEvent = new MouseEvent('mouseover', {
         view: window,
         bubbles: true,
         cancelable: true
       });
       item.dispatchEvent(mouseoverEvent);
-      await wait(50);
+      await wait(SELECTION_WAIT_MS);
       
-      // Look for checkbox - try multiple methods
       let clicked = false;
       
-      // Method 1: Find checkbox by role in item
       let checkbox = item.querySelector('[role="checkbox"]');
       
-      // Method 2: Find in parent if not found
       if (!checkbox) {
         checkbox = item.parentElement?.querySelector('[role="checkbox"]');
       }
       
-      // Method 3: Look for any aria-label with "select"
       if (!checkbox) {
         const allElements = item.querySelectorAll('[aria-label]');
         for (const el of allElements) {
@@ -289,11 +290,10 @@ async function selectPhotos(photoItems, batchSize) {
         clicked = true;
         selectedCount++;
         
-        // Update progress bar as we select
-        const progress = 10 + (selectedCount / targetCount) * 20; // From 10% to 30%
+        const progress = PROGRESS_SELECTING_START + (selectedCount / targetCount) * SELECTION_PROGRESS_DELTA;
         sendBatchProgress(`Selecting... ${selectedCount}/${targetCount}`, progress);
         
-        await wait(50);
+        await wait(SELECTION_WAIT_MS);
       } else {
         console.log(`No checkbox found for photo ${i+1}`);
       }
@@ -309,7 +309,7 @@ async function selectPhotos(photoItems, batchSize) {
 }
 
 async function deselectAll() {
-  // Try to find and click deselect/clear button
+  
   const deselectButtons = [
     document.querySelector('[aria-label*="Clear selection"]'),
     document.querySelector('[aria-label*="Deselect"]'),
@@ -319,12 +319,11 @@ async function deselectAll() {
   for (const btn of deselectButtons) {
     if (btn) {
       btn.click();
-      await wait(500);
+      await wait(PAGE_UPDATE_CHECK_INTERVAL_MS);
       return true;
     }
   }
   
-  // Press Escape key
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
   return false;
 }
@@ -332,16 +331,14 @@ async function deselectAll() {
 async function clickDeleteButton() {
   console.log('Looking for delete button...');
   
-  // First, look for visible buttons with delete-related text
   const allButtons = document.querySelectorAll('button');
   for (const btn of allButtons) {
-    if (btn.offsetParent === null) continue; // Skip hidden buttons
+    if (btn.offsetParent === null) continue;
     
     const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
     const title = (btn.getAttribute('title') || '').toLowerCase();
     const text = (btn.textContent || '').toLowerCase().trim();
     
-    // Check for any delete/bin/trash keywords
     const keywords = ['delete', 'trash', 'bin', 'löschen', 'papierkorb'];
     const hasKeyword = keywords.some(kw => 
       ariaLabel.includes(kw) || title.includes(kw) || text.includes(kw)
@@ -351,49 +348,46 @@ async function clickDeleteButton() {
       console.log(`Found delete button! Text: "${text}", aria-label: "${ariaLabel}", title: "${title}"`);
       btn.click();
       console.log('Delete button clicked!');
-      await wait(500);
+      await wait(PAGE_UPDATE_CHECK_INTERVAL_MS);
       return true;
     }
   }
   
   console.log('No delete button found in button scan');
   
-  // Try pressing Delete key as fallback
   console.log('Trying Delete key...');
   const activeEl = document.activeElement || document.body;
   
-  // Try multiple key event types
   ['keydown', 'keypress', 'keyup'].forEach(eventType => {
     activeEl.dispatchEvent(new KeyboardEvent(eventType, { 
       key: 'Delete',
-      keyCode: 46,
+      keyCode: DELETE_KEY_CODE,
       code: 'Delete',
-      which: 46,
+      which: DELETE_KEY_CODE,
       bubbles: true,
       cancelable: true
     }));
     
     document.dispatchEvent(new KeyboardEvent(eventType, { 
       key: 'Delete',
-      keyCode: 46,
+      keyCode: DELETE_KEY_CODE,
       code: 'Delete',
-      which: 46,
+      which: DELETE_KEY_CODE,
       bubbles: true,
       cancelable: true
     }));
   });
   
-  await wait(500);
+  await wait(PAGE_UPDATE_CHECK_INTERVAL_MS);
   console.log('Delete key events dispatched');
   return true;
 }
 
 async function confirmDeletion() {
-  await wait(1000); // Wait for dialog
+  await wait(WAIT_AFTER_SELECTION_MS);
   
   console.log('Looking for confirmation dialog...');
   
-  // Check if there's actually a dialog/modal visible
   const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"], .modal, [aria-modal="true"]');
   console.log(`Found ${dialogs.length} dialog elements`);
   
@@ -402,7 +396,6 @@ async function confirmDeletion() {
   } else {
     console.log('Dialog found:', dialogs[0]);
     
-    // Look for buttons INSIDE the dialog first
     for (const dialog of dialogs) {
       const dialogButtons = dialog.querySelectorAll('button');
       console.log(`Dialog has ${dialogButtons.length} buttons`);
@@ -415,11 +408,9 @@ async function confirmDeletion() {
         
         console.log(`Dialog button: text="${text}", aria-label="${ariaLabel}"`);
         
-        // Look for positive confirmation keywords
         const positiveKeywords = ['move to', 'bin', 'trash', 'delete', 'confirm', 'ok', 'yes', 
                                  'löschen', 'papierkorb', 'bestätigen', 'ja'];
         
-        // Avoid negative keywords
         const negativeKeywords = ['cancel', 'close', 'no', 'abbrechen', 'nein'];
         
         const hasPositive = positiveKeywords.some(kw => text.includes(kw) || ariaLabel.includes(kw));
@@ -428,14 +419,13 @@ async function confirmDeletion() {
         if (hasPositive && !hasNegative) {
           console.log(`✓ CLICKING confirmation button: "${text}"`);
           btn.click();
-          await wait(500);
+          await wait(PAGE_UPDATE_CHECK_INTERVAL_MS);
           return true;
         }
       }
     }
   }
   
-  // Fallback: check ALL visible buttons on page
   console.log('No button found in dialog, checking all page buttons...');
   const allButtons = document.querySelectorAll('button');
   
@@ -454,26 +444,25 @@ async function confirmDeletion() {
     if (hasPositive && !hasNegative) {
       console.log(`✓ CLICKING button: text="${text}", aria-label="${ariaLabel}"`);
       btn.click();
-      await wait(500);
+      await wait(PAGE_UPDATE_CHECK_INTERVAL_MS);
       return true;
     }
   }
   
   console.log('Could not find confirmation button, trying Enter key...');
   
-  // Press Enter to confirm
   ['keydown', 'keypress', 'keyup'].forEach(eventType => {
     document.dispatchEvent(new KeyboardEvent(eventType, { 
       key: 'Enter',
-      keyCode: 13,
+      keyCode: ENTER_KEY_CODE,
       code: 'Enter',
-      which: 13,
+      which: ENTER_KEY_CODE,
       bubbles: true,
       cancelable: true
     }));
   });
   
-  await wait(500);
+  await wait(PAGE_UPDATE_CHECK_INTERVAL_MS);
   return true;
 }
 
@@ -486,7 +475,6 @@ console.log('  testSelect()   - Try selecting the first photo');
 console.log('  testDelete()   - Try clicking the delete button');
 console.log('  testConfirm()  - Try confirming deletion dialog');
 
-// Diagnostic functions for debugging
 window.checkPhotos = function() {
   const photos = findPhotoElements();
   console.log(`Found ${photos.length} photos on current page`);
@@ -504,7 +492,7 @@ window.testSelect = async function() {
     return;
   }
   console.log(`Testing selection on first photo...`);
-  const result = await selectPhotos([photos[0]], 1);
+  const result = await selectPhotos([photos[0]], 1); // Test with single photo
   console.log(`Selection result: ${result} photo(s) selected`);
 };
 

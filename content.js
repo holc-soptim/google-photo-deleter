@@ -77,23 +77,39 @@ browser.runtime.onMessage.addListener((message, sender) => {
 });
 
 function sendStatus(status) {
-  browser.runtime.sendMessage({ type: 'status', status: status });
+  try {
+    browser.runtime.sendMessage({ type: 'status', status: status });
+  } catch (error) {
+    console.error('Failed to send status:', error);
+  }
 }
 
 function sendProgress(progress) {
-  browser.runtime.sendMessage({ type: 'progress', progress: progress });
+  try {
+    browser.runtime.sendMessage({ type: 'progress', progress: progress });
+  } catch (error) {
+    console.error('Failed to send progress:', error);
+  }
 }
 
 function sendBatchProgress(status, percentage) {
-  browser.runtime.sendMessage({ 
-    type: 'batchProgress', 
-    status: status, 
-    percentage: percentage 
-  });
+  try {
+    browser.runtime.sendMessage({ 
+      type: 'batchProgress', 
+      status: status, 
+      percentage: percentage 
+    });
+  } catch (error) {
+    console.error('Failed to send batch progress:', error);
+  }
 }
 
 function sendComplete(status) {
-  browser.runtime.sendMessage({ type: 'complete', status: status });
+  try {
+    browser.runtime.sendMessage({ type: 'complete', status: status });
+  } catch (error) {
+    console.error('Failed to send complete:', error);
+  }
 }
 
 function wait(ms) {
@@ -305,8 +321,6 @@ async function selectPhotos(photoItems, batchSize) {
       item.dispatchEvent(mouseoverEvent);
       await wait(SELECTION_WAIT_MS);
       
-      let clicked = false;
-      
       let checkbox = item.querySelector('[role="checkbox"]');
       
       if (!checkbox) {
@@ -326,7 +340,6 @@ async function selectPhotos(photoItems, batchSize) {
       
       if (checkbox) {
         checkbox.click();
-        clicked = true;
         selectedCount++;
         
         const progress = PROGRESS_SELECTING_START + (selectedCount / targetCount) * SELECTION_PROGRESS_DELTA;

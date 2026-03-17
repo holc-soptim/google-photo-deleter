@@ -7,6 +7,13 @@ const MIN_PERCENTAGE = 0;
 const MAX_PERCENTAGE = 100;
 const DEFAULT_PERCENTAGE = 0;
 
+// UI Color constants
+const COLORS = {
+  SUCCESS: '#28a745',
+  ERROR: '#dc3545',
+  INFO: '#6c757d'
+};
+
 let isRunning = false;
 
 document.getElementById('startBtn').addEventListener('click', async () => {
@@ -19,7 +26,7 @@ document.getElementById('startBtn').addEventListener('click', async () => {
   
   if (!tab.url || !tab.url.includes('photos.google.com')) {
     document.getElementById('status').textContent = 'ERROR: Please navigate to photos.google.com first!';
-    document.getElementById('status').style.color = '#dc3545';
+    document.getElementById('status').style.color = COLORS.ERROR;
     return;
   }
   
@@ -30,7 +37,7 @@ document.getElementById('startBtn').addEventListener('click', async () => {
   document.getElementById('startBtn').style.display = 'none';
   document.getElementById('stopBtn').style.display = 'block';
   document.getElementById('status').textContent = 'Starting deletion...';
-  document.getElementById('status').style.color = '#28a745';
+  document.getElementById('status').style.color = COLORS.SUCCESS;
   
   isRunning = true;
 
@@ -42,7 +49,7 @@ document.getElementById('startBtn').addEventListener('click', async () => {
     });
   } catch (error) {
     document.getElementById('status').textContent = 'ERROR: Could not connect. Please reload the Google Photos page and try again.';
-    document.getElementById('status').style.color = '#dc3545';
+    document.getElementById('status').style.color = COLORS.ERROR;
     document.getElementById('startBtn').style.display = 'block';
     document.getElementById('stopBtn').style.display = 'none';
     isRunning = false;
@@ -63,7 +70,7 @@ document.getElementById('stopBtn').addEventListener('click', async () => {
   document.getElementById('startBtn').style.display = 'block';
   document.getElementById('stopBtn').style.display = 'none';
   document.getElementById('status').textContent = 'Stopped';
-  document.getElementById('status').style.color = '#6c757d';
+  document.getElementById('status').style.color = COLORS.INFO;
   isRunning = false;
 });
 
@@ -83,7 +90,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
   if (message.type === 'status') {
     if (typeof message.status === 'string') {
       document.getElementById('status').textContent = message.status;
-      document.getElementById('status').style.color = '#28a745';
+      document.getElementById('status').style.color = COLORS.SUCCESS;
     }
   } else if (message.type === 'progress') {
     if (typeof message.progress === 'string') {
@@ -109,7 +116,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       document.getElementById('startBtn').style.display = 'block';
       document.getElementById('stopBtn').style.display = 'none';
       document.getElementById('status').textContent = message.status;
-      document.getElementById('status').style.color = '#28a745';
+      document.getElementById('status').style.color = COLORS.SUCCESS;
       document.getElementById('batchProgress').style.display = 'none';
       isRunning = false;
     }
@@ -121,10 +128,10 @@ browser.runtime.onMessage.addListener((message, sender) => {
   
   if (!tab.url || !tab.url.includes('photos.google.com')) {
     document.getElementById('status').textContent = 'Please open photos.google.com first';
-    document.getElementById('status').style.color = '#dc3545';
+    document.getElementById('status').style.color = COLORS.ERROR;
     document.getElementById('startBtn').disabled = true;
   } else {
     document.getElementById('status').textContent = 'Ready to start';
-    document.getElementById('status').style.color = '#28a745';
+    document.getElementById('status').style.color = COLORS.SUCCESS;
   }
 })();

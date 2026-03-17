@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 350px;
+      padding: 15px;
+      font-family: Arial, sans-serif;
+    }
+    h2 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      color: #333;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #17a2b8;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    #startBtn {
+      background: #dc3545;
+      color: white;
+    }
+    #startBtn:hover {
+      background: #c82333;
+    }
+    #startBtn:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+    #stopBtn {
+      background: #6c757d;
+      color: white;
+      display: none;
+    }
+    #stopBtn:hover {
+      background: #5a6268;
+    }
+    #status {
+      margin: 10px 0;
+      font-size: 13px;
+      font-weight: bold;
+      color: #28a745;
+    }
+    #progress {
+      margin: 10px 0;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h2>🗑️ Google Photos Bulk Deleter</h2>
+  
+  <div class="warning">
+    <strong>⚠️ Warning:</strong> This will permanently delete all your photos after emptying trash!
+  </div>
+
+  <div class="info">
+    Make sure you're on photos.google.com/photos before starting.
+  </div>
+
+  <button id="startBtn">Start Deleting All Photos</button>
+  <button id="stopBtn">Stop Deletion</button>
+
+  <div id="status"></div>
+  <div id="progress"></div>
+  
+  <div id="batchProgress" style="display: none;">
+    <div style="margin: 10px 0; font-size: 12px; color: #666;">
+      <div id="batchStatus" style="margin-bottom: 5px;">Processing batch...</div>
+      <div style="background: #e0e0e0; height: 20px; border-radius: 10px; overflow: hidden;">
+        <div id="batchProgressBar" style="background: linear-gradient(90deg, #28a745, #20c997); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+      </div>
+      <div id="batchPercentage" style="text-align: center; margin-top: 2px; font-weight: bold;">0%</div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

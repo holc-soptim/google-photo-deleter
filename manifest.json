@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2,
+  "name": "Google Photos Bulk Deleter",
+  "version": "1.0",
+  "description": "Automate deletion of all photos from Google Photos",
+  "permissions": [
+    "activeTab",
+    "https://photos.google.com/*"
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icon.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://photos.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "48": "icon.png"
+  }
+}

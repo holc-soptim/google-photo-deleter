@@ -17,6 +17,21 @@ const MIN_BATCH_DELAY_MS = 500;
 const DELETE_KEY_CODE = 46;
 const ENTER_KEY_CODE = 13;
 
+// Validation constants
+const MIN_BATCH_SIZE = 1;
+const MAX_BATCH_SIZE = 250;
+const MIN_DELAY = 0;
+const MAX_DELAY = 10000;
+
+// Calculation constants
+const PARSE_INT_RADIX = 10;
+const HALF_DIVISOR = 2;
+const MS_TO_SECONDS_DIVISOR = 1000;
+const SCROLL_X_COORDINATE = 0;
+const DOUBLE_WAIT_MULTIPLIER = 2;
+const INITIAL_COUNT = 0;
+
+// Progress percentages
 const PROGRESS_BATCH_START = 0;
 const PROGRESS_SELECTING_START = 10;
 const PROGRESS_SELECTING_END = 30;
@@ -27,13 +42,34 @@ const PROGRESS_WAITING_REFRESH = 95;
 const PROGRESS_BATCH_COMPLETE = 100;
 
 let isDeleting = false;
-let totalDeleted = 0;
+let totalDeleted = INITIAL_COUNT;
 
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener((message, sender) => {
+  // Validate sender is from this extension
+  if (!sender || sender.id !== browser.runtime.id) {
+    console.error('Message from unauthorized sender rejected');
+    return;
+  }
+  
   if (message.action === 'startDeletion') {
+    // Validate input parameters
+    const batchSize = parseInt(message.batchSize, PARSE_INT_RADIX);
+    const delay = parseInt(message.delay, PARSE_INT_RADIX);
+    
+    if (!Number.isFinite(batchSize) || batchSize < MIN_BATCH_SIZE || batchSize > MAX_BATCH_SIZE) {
+      console.error('Invalid batchSize:', message.batchSize);
+      sendStatus('Error: Invalid batch size parameter');
+      return;
+    }
+    if (!Number.isFinite(delay) || delay < MIN_DELAY || delay > MAX_DELAY) {
+      console.error('Invalid delay:', message.delay);
+      sendStatus('Error: Invalid delay parameter');
+      return;
+    }
+    
     isDeleting = true;
-    totalDeleted = 0;
-    startDeletionProcess(message.batchSize, message.delay);
+    totalDeleted = INITIAL_COUNT;
+    startDeletionProcess(batchSize, delay);
   } else if (message.action === 'stopDeletion') {
     isDeleting = false;
     sendStatus('Deletion stopped by user');
@@ -69,7 +105,7 @@ async function startDeletionProcess(batchSize, delay) {
   console.log('=== Starting deletion process ===');
   console.log(`Batch size: ${batchSize}, Delay: ${delay}ms`);
   
-  let iterationCount = 0;
+  let iterationCount = INITIAL_COUNT;
   
   while (isDeleting && iterationCount < MAX_ITERATIONS) {
     iterationCount++;
@@ -100,9 +136,11 @@ async function startDeletionProcess(batchSize, delay) {
     
     sendProgress(`Found ${photoItems.length} photos on page. Total deleted so far: ${totalDeleted}`);
     
+    // Get unique identifier for first photo (safe alternatives)
     const firstPhotoId = photoItems[0].getAttribute('data-item-id') || 
                         photoItems[0].getAttribute('data-latest-creation-time') ||
-                        photoItems[0].innerHTML.substring(0, 100);
+                        photoItems[0].id ||
+                        'photo-' + Date.now();
     
     sendBatchProgress('Selecting photos...', PROGRESS_SELECTING_START);
     const selectedCount = await selectPhotos(photoItems, batchSize);
@@ -157,7 +195,7 @@ async function startDeletionProcess(batchSize, delay) {
     sendBatchProgress('Waiting for page refresh...', PROGRESS_WAITING_REFRESH);
     
     let pageUpdated = false;
-    let attempts = 0;
+    let attempts = INITIAL_COUNT;
     
     while (attempts < MAX_PAGE_UPDATE_ATTEMPTS && !pageUpdated) {
       await wait(PAGE_UPDATE_CHECK_INTERVAL_MS);
@@ -167,7 +205,7 @@ async function startDeletionProcess(batchSize, delay) {
       
       console.log(`Check ${attempts}/${MAX_PAGE_UPDATE_ATTEMPTS}: Found ${newPhotoItems.length} photos (was ${photoItems.length})`);
       
-      if (newPhotoItems.length < photoItems.length - (selectedCount / 2)) {
+      if (newPhotoItems.length < photoItems.length - (selectedCount / HALF_DIVISOR)) {
         console.log(`✓ Photo count decreased from ${photoItems.length} to ${newPhotoItems.length}. Continuing...`);
         pageUpdated = true;
         break;
@@ -182,7 +220,8 @@ async function startDeletionProcess(batchSize, delay) {
       if (newPhotoItems.length > 0) {
         const newFirstPhotoId = newPhotoItems[0].getAttribute('data-item-id') || 
                                newPhotoItems[0].getAttribute('data-latest-creation-time') ||
-                               newPhotoItems[0].innerHTML.substring(0, 100);
+                               newPhotoItems[0].id ||
+                               'photo-new';
         
         if (newFirstPhotoId !== firstPhotoId) {
           console.log(`✓ Page updated! First photo changed. Continuing...`);
@@ -193,14 +232,14 @@ async function startDeletionProcess(batchSize, delay) {
       
       if (attempts === SCROLL_TRIGGER_ATTEMPT) {
         console.log('Trying to scroll to trigger page update...');
-        window.scrollBy(0, SCROLL_AMOUNT);
-        await wait(SELECTION_WAIT_MS * 2);
-        window.scrollBy(0, -SCROLL_AMOUNT);
+        window.scrollBy(SCROLL_X_COORDINATE, SCROLL_AMOUNT);
+        await wait(SELECTION_WAIT_MS * DOUBLE_WAIT_MULTIPLIER);
+        window.scrollBy(SCROLL_X_COORDINATE, -SCROLL_AMOUNT);
       }
     }
     
     if (!pageUpdated) {
-      console.log(`Page did not update after ${MAX_PAGE_UPDATE_ATTEMPTS * PAGE_UPDATE_CHECK_INTERVAL_MS / 1000} seconds. Continuing anyway...`);
+      console.log(`Page did not update after ${MAX_PAGE_UPDATE_ATTEMPTS * PAGE_UPDATE_CHECK_INTERVAL_MS / MS_TO_SECONDS_DIVISOR} seconds. Continuing anyway...`);
       sendStatus('No page update detected, continuing...');
     }
     
@@ -245,7 +284,7 @@ function findPhotoElements() {
 }
 
 async function selectPhotos(photoItems, batchSize) {
-  let selectedCount = 0;
+  let selectedCount = INITIAL_COUNT;
   
   console.log(`Attempting to select ${Math.min(photoItems.length, batchSize)} photos from ${photoItems.length} available...`);
   
@@ -468,43 +507,4 @@ async function confirmDeletion() {
 
 console.log('✓ Google Photos Bulk Deleter extension loaded successfully');
 console.log('Open the extension popup and click "Start Deleting All Photos" to begin');
-console.log('');
-console.log('Diagnostic commands you can run in console:');
-console.log('  checkPhotos()  - See how many photos are detected');
-console.log('  testSelect()   - Try selecting the first photo');
-console.log('  testDelete()   - Try clicking the delete button');
-console.log('  testConfirm()  - Try confirming deletion dialog');
-
-window.checkPhotos = function() {
-  const photos = findPhotoElements();
-  console.log(`Found ${photos.length} photos on current page`);
-  if (photos.length > 0) {
-    console.log('First photo element:', photos[0]);
-    console.log('Checkboxes in first photo:', photos[0].querySelectorAll('[role="checkbox"]'));
-  }
-  return photos.length;
-};
-
-window.testSelect = async function() {
-  const photos = findPhotoElements();
-  if (photos.length === 0) {
-    console.log('No photos found!');
-    return;
-  }
-  console.log(`Testing selection on first photo...`);
-  const result = await selectPhotos([photos[0]], 1); // Test with single photo
-  console.log(`Selection result: ${result} photo(s) selected`);
-};
-
-window.testDelete = async function() {
-  console.log('Testing delete button click...');
-  const result = await clickDeleteButton();
-  console.log(`Delete button result: ${result}`);
-};
-
-window.testConfirm = async function() {
-  console.log('Testing confirmation...');
-  const result = await confirmDeletion();
-  console.log(`Confirmation result: ${result}`);
-};
 

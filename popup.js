@@ -1,5 +1,11 @@
+// Configuration constants
 const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_DELAY_MS = 300;
+
+// Validation constants
+const MIN_PERCENTAGE = 0;
+const MAX_PERCENTAGE = 100;
+const DEFAULT_PERCENTAGE = 0;
 
 let isRunning = false;
 
@@ -61,30 +67,52 @@ document.getElementById('stopBtn').addEventListener('click', async () => {
   isRunning = false;
 });
 
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener((message, sender) => {
+  // Validate sender
+  if (!sender || sender.id !== browser.runtime.id) {
+    console.error('Message from unauthorized sender rejected');
+    return;
+  }
+  
+  // Validate message type
+  if (!message.type || typeof message.type !== 'string') {
+    console.error('Invalid message format');
+    return;
+  }
+  
   if (message.type === 'status') {
-    document.getElementById('status').textContent = message.status;
-    document.getElementById('status').style.color = '#28a745';
+    if (typeof message.status === 'string') {
+      document.getElementById('status').textContent = message.status;
+      document.getElementById('status').style.color = '#28a745';
+    }
   } else if (message.type === 'progress') {
-    document.getElementById('progress').textContent = message.progress;
+    if (typeof message.progress === 'string') {
+      document.getElementById('progress').textContent = message.progress;
+    }
   } else if (message.type === 'batchProgress') {
-    // Show batch progress bar
+    // Show batch progress bar with bounds checking
     const batchProgressDiv = document.getElementById('batchProgress');
     const batchStatusDiv = document.getElementById('batchStatus');
     const progressBar = document.getElementById('batchProgressBar');
     const percentageDiv = document.getElementById('batchPercentage');
     
+    // Validate and clamp percentage to valid range
+    const percentage = Math.max(MIN_PERCENTAGE, Math.min(MAX_PERCENTAGE, parseFloat(message.percentage) || DEFAULT_PERCENTAGE));
+    const status = typeof message.status === 'string' ? message.status : 'Processing...';
+    
     batchProgressDiv.style.display = 'block';
-    batchStatusDiv.textContent = message.status;
-    progressBar.style.width = message.percentage + '%';
-    percentageDiv.textContent = Math.round(message.percentage) + '%';
+    batchStatusDiv.textContent = status;
+    progressBar.style.width = percentage + '%';
+    percentageDiv.textContent = Math.round(percentage) + '%';
   } else if (message.type === 'complete') {
-    document.getElementById('startBtn').style.display = 'block';
-    document.getElementById('stopBtn').style.display = 'none';
-    document.getElementById('status').textContent = message.status;
-    document.getElementById('status').style.color = '#28a745';
-    document.getElementById('batchProgress').style.display = 'none';
-    isRunning = false;
+    if (typeof message.status === 'string') {
+      document.getElementById('startBtn').style.display = 'block';
+      document.getElementById('stopBtn').style.display = 'none';
+      document.getElementById('status').textContent = message.status;
+      document.getElementById('status').style.color = '#28a745';
+      document.getElementById('batchProgress').style.display = 'none';
+      isRunning = false;
+    }
   }
 });
 

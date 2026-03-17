@@ -1,6 +1,12 @@
 # Build XPI file for Firefox extension
-$extensionName = "google-photos-deleter"
-$version = "1.0"
+
+# Configuration
+$EXTENSION_NAME = "google-photos-deleter"
+$VERSION = "1.0"
+
+# Computed values
+$extensionName = $EXTENSION_NAME
+$version = $VERSION
 $outputFile = "$extensionName-$version.xpi"
 $tempZip = "$extensionName-$version.zip"
 

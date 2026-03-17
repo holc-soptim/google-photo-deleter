@@ -1,8 +1,14 @@
 #!/bin/bash
 
 # Build XPI file for Firefox extension
-EXTENSION_NAME="google-photos-deleter"
-VERSION="1.0"
+
+# Configuration constants
+readonly EXTENSION_NAME="google-photos-deleter"
+readonly VERSION="1.0"
+readonly EXIT_CODE_SUCCESS=0
+readonly EXIT_CODE_ERROR=1
+
+# Computed values
 OUTPUT_FILE="${EXTENSION_NAME}-${VERSION}.xpi"
 
 if [ -f "$OUTPUT_FILE" ]; then
@@ -22,7 +28,7 @@ FILES=(
 echo "Creating XPI file..."
 zip -q "$OUTPUT_FILE" "${FILES[@]}"
 
-if [ $? -eq 0 ]; then
+if [ $? -eq $EXIT_CODE_SUCCESS ]; then
     echo -e "Successfully created $OUTPUT_FILE"
     echo ""
     echo -e "To install:"
@@ -32,5 +38,5 @@ if [ $? -eq 0 ]; then
     echo "4. Choose the XPI file"
 else
     echo -e "Error creating XPI file"
-    exit 1
+    exit $EXIT_CODE_ERROR
 fi

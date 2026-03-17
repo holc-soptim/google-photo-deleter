@@ -2,72 +2,143 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" 
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'none';">
+  <title>Google Photos Deleter</title>
   <style>
+    :root {
+      /* Layout */
+      --popup-width: 350px;
+      --padding-large: 15px;
+      --padding-medium: 10px;
+      --padding-small: 5px;
+      --margin-medium: 10px;
+      --margin-small: 5px;
+      --margin-tiny: 2px;
+      --border-radius-small: 4px;
+      --border-radius-medium: 10px;
+      
+      /* Typography */
+      --font-size-large: 16px;
+      --font-size-medium: 14px;
+      --font-size-normal: 13px;
+      --font-size-small: 12px;
+      
+      /* Colors */
+      --color-text-dark: #333;
+      --color-text-gray: #666;
+      --color-text-disabled: #999;
+      --color-success: #28a745;
+      --color-success-light: #20c997;
+      --color-danger: #dc3545;
+      --color-danger-dark: #c82333;
+      --color-warning-bg: #fff3cd;
+      --color-warning-border: #ffc107;
+      --color-info-bg: #d1ecf1;
+      --color-info-border: #17a2b8;
+      --color-secondary: #6c757d;
+      --color-secondary-dark: #5a6268;
+      --color-progress-bg: #e0e0e0;
+      --color-white: white;
+      
+      /* Dimensions */
+      --button-width: 100%;
+      --border-width: 1px;
+      --progress-bar-height: 20px;
+      --transition-duration: 0.3s;
+      --progress-bar-width-initial: 0%;
+    }
+    
     body {
-      width: 350px;
-      padding: 15px;
+      width: var(--popup-width);
+      padding: var(--padding-large);
       font-family: Arial, sans-serif;
     }
     h2 {
-      margin: 0 0 10px 0;
-      font-size: 16px;
-      color: #333;
+      margin: 0 0 var(--margin-medium) 0;
+      font-size: var(--font-size-large);
+      color: var(--color-text-dark);
     }
     .warning {
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 4px;
-      font-size: 13px;
+      background: var(--color-warning-bg);
+      border: var(--border-width) solid var(--color-warning-border);
+      padding: var(--padding-medium);
+      margin: var(--margin-medium) 0;
+      border-radius: var(--border-radius-small);
+      font-size: var(--font-size-normal);
     }
     .info {
-      background: #d1ecf1;
-      border: 1px solid #17a2b8;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 4px;
-      font-size: 13px;
+      background: var(--color-info-bg);
+      border: var(--border-width) solid var(--color-info-border);
+      padding: var(--padding-medium);
+      margin: var(--margin-medium) 0;
+      border-radius: var(--border-radius-small);
+      font-size: var(--font-size-normal);
     }
     button {
-      width: 100%;
-      padding: 10px;
-      margin: 5px 0;
+      width: var(--button-width);
+      padding: var(--padding-medium);
+      margin: var(--margin-small) 0;
       border: none;
-      border-radius: 4px;
+      border-radius: var(--border-radius-small);
       cursor: pointer;
-      font-size: 14px;
+      font-size: var(--font-size-medium);
       font-weight: bold;
     }
     #startBtn {
-      background: #dc3545;
-      color: white;
+      background: var(--color-danger);
+      color: var(--color-white);
     }
     #startBtn:hover {
-      background: #c82333;
+      background: var(--color-danger-dark);
     }
     #startBtn:disabled {
-      background: #999;
+      background: var(--color-text-disabled);
       cursor: not-allowed;
     }
     #stopBtn {
-      background: #6c757d;
-      color: white;
+      background: var(--color-secondary);
+      color: var(--color-white);
       display: none;
     }
     #stopBtn:hover {
-      background: #5a6268;
+      background: var(--color-secondary-dark);
     }
     #status {
-      margin: 10px 0;
-      font-size: 13px;
+      margin: var(--margin-medium) 0;
+      font-size: var(--font-size-normal);
       font-weight: bold;
-      color: #28a745;
+      color: var(--color-success);
     }
     #progress {
-      margin: 10px 0;
-      font-size: 12px;
-      color: #666;
+      margin: var(--margin-medium) 0;
+      font-size: var(--font-size-small);
+      color: var(--color-text-gray);
+    }
+    #batchProgress {
+      margin: var(--margin-medium) 0;
+      font-size: var(--font-size-small);
+      color: var(--color-text-gray);
+    }
+    #batchStatus {
+      margin-bottom: var(--margin-small);
+    }
+    .progress-bar-container {
+      background: var(--color-progress-bg);
+      height: var(--progress-bar-height);
+      border-radius: var(--border-radius-medium);
+      overflow: hidden;
+    }
+    #batchProgressBar {
+      background: linear-gradient(90deg, var(--color-success), var(--color-success-light));
+      height: var(--button-width);
+      width: var(--progress-bar-width-initial);
+      transition: width var(--transition-duration) ease;
+    }
+    #batchPercentage {
+      text-align: center;
+      margin-top: var(--margin-tiny);
+      font-weight: bold;
     }
   </style>
 </head>
@@ -89,13 +160,11 @@
   <div id="progress"></div>
   
   <div id="batchProgress" style="display: none;">
-    <div style="margin: 10px 0; font-size: 12px; color: #666;">
-      <div id="batchStatus" style="margin-bottom: 5px;">Processing batch...</div>
-      <div style="background: #e0e0e0; height: 20px; border-radius: 10px; overflow: hidden;">
-        <div id="batchProgressBar" style="background: linear-gradient(90deg, #28a745, #20c997); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
-      </div>
-      <div id="batchPercentage" style="text-align: center; margin-top: 2px; font-weight: bold;">0%</div>
+    <div id="batchStatus">Processing batch...</div>
+    <div class="progress-bar-container">
+      <div id="batchProgressBar"></div>
     </div>
+    <div id="batchPercentage">0%</div>
   </div>
 
   <script src="popup.js"></script>

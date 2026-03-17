@@ -14,7 +14,7 @@ A Firefox extension to automate bulk deletion of photos from Google Photos.
 
 ## Usage
 
-1. Navigate to https://photos.google.com/photos and sign in
+1. Navigate to https://photos.google.com and sign in
 2. Click the extension icon in your Firefox toolbar
 3. Click "Start Deleting All Photos" in the popup
 4. Confirm the warning dialog
@@ -50,7 +50,7 @@ chmod +x build-xpi.sh
 ## Troubleshooting
 
 **Extension doesn't start:**
-- Make sure you're on https://photos.google.com/photos (not just the homepage)
+- Make sure you're on https://photos.google.com
 - Reload the Google Photos page
 - Reload the extension in `about:debugging`
 - Check the browser console (F12) for error messages

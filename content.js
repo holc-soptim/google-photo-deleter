@@ -8,8 +8,6 @@ const PAGE_UPDATE_CHECK_INTERVAL_MS = 500;
 const MAX_PAGE_UPDATE_ATTEMPTS = 15;
 const SCROLL_TRIGGER_ATTEMPT = 10;
 const SCROLL_AMOUNT = 500;
-const MIN_PHOTO_SIZE = 50;
-const MAX_PHOTO_SIZE = 500;
 const MAX_PHOTOS_PER_BATCH = 200;
 const SELECTION_WAIT_MS = 50;
 const SELECTION_PROGRESS_DELTA = 20;
@@ -286,7 +284,8 @@ function findPhotoElements() {
       console.log(`Found ${elements.length} photos using selector: ${selector}`);
       const filtered = Array.from(elements).filter(el => {
         const rect = el.getBoundingClientRect();
-        return rect.width > MIN_PHOTO_SIZE && rect.height > MIN_PHOTO_SIZE && rect.width < MAX_PHOTO_SIZE && rect.height < MAX_PHOTO_SIZE;
+        // Only filter out invisible elements (width or height = 0)
+        return rect.width > 0 && rect.height > 0;
       });
       console.log(`Filtered to ${filtered.length} visible photo thumbnails`);
       if (filtered.length > 0) {

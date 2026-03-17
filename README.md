@@ -28,11 +28,12 @@ A Firefox extension to automate bulk deletion of photos from Google Photos.
 
 1. Navigate to https://photos.google.com/photos and sign in
 2. Click the extension icon in your Firefox toolbar
-3. A control window will open (stays open while you work)
-4. Click "Start Deleting All Photos"
-5. Confirm the warning dialog
-6. Monitor the progress in the control window
-7. After completion, go to https://photos.google.com/trash and empty the trash
+3. Click "Start Deleting All Photos" in the popup
+4. Confirm the warning dialog
+5. The popup will show progress updates
+6. After completion, go to https://photos.google.com/trash and empty the trash
+
+**Note:** Keep the browser tab with Google Photos active during the deletion process.
 
 ## How It Works
 

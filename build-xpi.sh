@@ -18,7 +18,6 @@ fi
 
 FILES=(
     "manifest.json"
-    "background.js"
     "content.js"
     "popup.html"
     "popup.js"

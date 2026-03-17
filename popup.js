@@ -24,7 +24,18 @@ document.getElementById('startBtn').addEventListener('click', async () => {
   
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   
-  if (!tab.url || !tab.url.includes('photos.google.com')) {
+  let isOnAllowedHost = false;
+  if (tab && tab.url) {
+    try {
+      const parsedUrl = new URL(tab.url);
+      const allowedHosts = ['photos.google.com'];
+      isOnAllowedHost = allowedHosts.includes(parsedUrl.hostname);
+    } catch (e) {
+      isOnAllowedHost = false;
+    }
+  }
+
+  if (!isOnAllowedHost) {
     document.getElementById('status').textContent = 'ERROR: Please navigate to photos.google.com first!';
     document.getElementById('status').style.color = COLORS.ERROR;
     return;
